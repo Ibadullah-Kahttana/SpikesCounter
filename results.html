@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spikes and Yield Count</title>
+    <link rel="shortcut Icon" type="image/png" href="static/img/lgo.png">
+</head>
+
+<style>
+
+.SpikeCount{
+    color: black;
+    font-size: 6vw;
+    line-height: 23vw;
+    border: 1px solid brown;
+}
+
+.yieldCount{
+    color: black;
+    font-size: 6vw;
+    line-height: 23vw;
+    border: 1px solid brown;
+    margin-left:230px;
+}
+
+
+div{
+    margin-left: 160px ;
+    margin-top: 10px ;
+    display: block;
+    float: left;
+    width: 400px;
+    height: fit-content;
+    text-align: center;
+    background-color: #D7DBDD;
+    position: relative;
+    border-radius:10px;
+     border: 1px solid brown;
+}
+
+div1{
+    margin-left: 100px ;
+    margin-top: 0px ;
+    display: block;
+    float: left;
+    width: 500px;
+    height: fit-content;
+    text-align: center;
+    font-size: 35px;
+}
+
+
+div11{
+    margin-left: 120px ;
+    margin-top: 0px ;
+    display: block;
+    float: left;
+    width: 500px;
+    height: 200px;
+    text-align: center;
+    font-size: 35px;
+}
+
+.sub{
+    color:#black;
+    margin-left:47%;
+    width:120px;
+    height:40px;
+    color:white;
+    background: #025bee;
+    border-radius: 10px;
+}
+
+
+.button{
+  position: relative;
+  background-color: black;
+  border-radius: 4em;
+  font-size: 16px;
+  color: white;
+  padding: 0.8em 1.8em;
+  cursor:pointer;
+  user-select:none;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition-duration: 0.4s;
+  -webkit-transition-duration: 0.4s; /* Safari */
+   margin-left:46.5%;
+   margin-top:40dp;
+
+}
+
+.button:hover {
+  transition-duration: 0.1s;
+  background-color: #55180E;
+}
+
+#btn{
+margin-top:1200dp;
+}
+
+</style>
+
+
+<body>
+
+<div1>
+    <h2>Spikes Count</h2>
+</div1>
+
+<div11>
+    <h2>Yield Value</h2>
+    <h5>( in Grams )</h5>
+</div11>
+
+{% set spikesCount = spikes %}
+{% set yield = yieldVal %}
+
+<div class="SpikeCount" id="spikec">
+    {{ spikesCount }}
+</div>
+<div class="yieldCount" id="yieldc">
+    {{ yield }}
+</div>
+
+<form action="/home" method="POST">
+    <input class="button" type="submit" value="Home"/>
+</form>
+
+
+</body>
+</html>

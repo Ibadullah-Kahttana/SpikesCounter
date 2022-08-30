@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Bounding Boxes</title>
+    <link rel="shortcut Icon" type="image/png" href="static/img/lgo.png">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css')}}">
+</head>
+<body>
+    <div>
+        <h1 style="text-align:center ; font-size:18sp ; margin-top:5%"> Bounding Boxes </h1>
+    </div>
+
+    <div class="container-box">
+        {%for im in images%}
+            <img src="{{ url_for('static', filename=im)}}" alt="image" >
+        {%endfor%}
+
+        <form action="/result" method="POST">
+            <input class="button-s" type = "submit" value="Count Spikes"/>
+        </form>
+    </div>
+
+
+
+
+ <script src="{{ url_for('static', filename='script.js')}}"></script>
+
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpikesCounter - Automatic wheat spikes counter</title>
+    <link rel="shortcut Icon" type="image/png" href="static/img/lgo.png">
+    <!--Font Awesome Icons-->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Rubik&display=swap" rel="stylesheet">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css')}}">
+</head>
+<body>
+
+    <img id="logo" src="{{ url_for('static', filename='img/headerlogo/SLogo.png')}}" alt="SpikesLogo">
+    <div>
+    <P style="text-align:center ; font-size:18sp"> Automatic Quantification of wheat spikes </P>
+    </div>
+
+
+    <div class="container">
+        <form action="/boxView" method="POST"
+         enctype = "multipart/form-data">
+        <input type="file" id="file-input" name = "file" accept="image/png, image/jpeg" onchange="preview()" multiple>
+        <label for="file-input">
+            <i class="fas fa-upload"></i> &nbsp; Choose A Photo
+        </label>
+        <p id="num-of-files">No Files Chosen</p>
+        <div id="images"></div>
+
+        <input class="button" type = "submit" value="Bounding Boxes"/>
+
+        </form>
+    </div>
+    <!--Script-->
+    <script src="{{ url_for('static', filename='script.js')}}"></script>
+</body>
+</html>
