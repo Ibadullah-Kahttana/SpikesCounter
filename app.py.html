@@ -1,0 +1,286 @@
+<html>
+<head>
+<title>app.py</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #0033b3;}
+.s1 { color: #080808;}
+.s2 { color: #8c8c8c; font-style: italic;}
+.s3 { color: #067d17;}
+.s4 { color: #0037a6;}
+.s5 { color: #1750eb;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+app.py</font>
+</center></td></tr></table>
+<pre><span class="s0">import </span><span class="s1">csv</span>
+<span class="s0">from </span><span class="s1">flask </span><span class="s0">import </span><span class="s1">Flask, render_template, request</span>
+<span class="s0">import </span><span class="s1">pandas </span><span class="s0">as </span><span class="s1">pd  </span><span class="s2"># for Loading dataset</span>
+<span class="s0">import </span><span class="s1">numpy </span><span class="s0">as </span><span class="s1">np  </span><span class="s2"># Used for array</span>
+<span class="s0">import </span><span class="s1">cv2  </span><span class="s2"># images , inputS</span>
+<span class="s0">import </span><span class="s1">os  </span><span class="s2"># Os operations , counting etc</span>
+<span class="s2">#import re</span>
+<span class="s2">#from PIL import Image</span>
+<span class="s0">import </span><span class="s1">albumentations </span><span class="s0">as </span><span class="s1">A</span>
+<span class="s0">from </span><span class="s1">albumentations.pytorch.transforms </span><span class="s0">import </span><span class="s1">ToTensorV2</span>
+<span class="s0">import </span><span class="s1">torch</span>
+<span class="s0">import </span><span class="s1">torchvision</span>
+<span class="s2">#from torch import device</span>
+<span class="s0">from </span><span class="s1">torchvision.models.detection.faster_rcnn </span><span class="s0">import </span><span class="s1">FastRCNNPredictor</span>
+<span class="s0">from </span><span class="s1">torch.utils.data </span><span class="s0">import </span><span class="s1">DataLoader, Dataset</span>
+<span class="s0">from </span><span class="s1">matplotlib </span><span class="s0">import </span><span class="s1">pyplot </span><span class="s0">as </span><span class="s1">plt</span>
+
+
+<span class="s2"># ---------------------------------------------------------------------------------------</span>
+
+<span class="s0">def </span><span class="s1">runModel():</span>
+
+    <span class="s1">DIR_INPUT = </span><span class="s3">'D:/Project/Spikes Counter/Dataset'</span>
+    <span class="s2"># DIR_TRAIN = f'{DIR_INPUT}/train'</span>
+    <span class="s1">DIR_TEST = </span><span class="s3">f'</span><span class="s4">{</span><span class="s1">DIR_INPUT</span><span class="s4">}</span><span class="s3">/test'</span>
+    <span class="s2"># DIR_ASSETS = 'C:/Project/Spikes Counter/assets'</span>
+    <span class="s1">DIR_WEIGHTS = </span><span class="s3">'D:/Project/Spikes Counter/weights'</span>
+    <span class="s1">WEIGHTS_FILE = </span><span class="s3">f'</span><span class="s4">{</span><span class="s1">DIR_WEIGHTS</span><span class="s4">}</span><span class="s3">/fasterrcnn_resnet50_fpn.pth'</span>
+
+    <span class="s2"># ----------------------------------------------------------------------------------------</span>
+
+    <span class="s1">test_df = pd.read_csv(</span><span class="s3">'D:/Project/Spikes Counter/assets/sample_submission.csv'</span><span class="s1">)</span>
+    <span class="s1">test_df.shape</span>
+
+    <span class="s2"># ----------------------------------------------------------------------------------------</span>
+
+    <span class="s0">class </span><span class="s1">WheatTestDataset(Dataset):</span>
+
+        <span class="s0">def </span><span class="s1">__init__(self, dataframe, image_dir, transforms=</span><span class="s0">None</span><span class="s1">):</span>
+            <span class="s1">super().__init__()</span>
+
+            <span class="s1">self.image_ids = dataframe[</span><span class="s3">'image_id'</span><span class="s1">].unique()</span>
+            <span class="s1">self.df = dataframe</span>
+            <span class="s1">self.image_dir = image_dir</span>
+            <span class="s1">self.transforms = transforms</span>
+
+        <span class="s0">def </span><span class="s1">__getitem__(self, index: int):</span>
+            <span class="s1">image_id = self.image_ids[index]</span>
+            <span class="s1">records = self.df[self.df[</span><span class="s3">'image_id'</span><span class="s1">] == image_id]</span>
+
+            <span class="s1">image = cv2.imread(</span><span class="s3">f'</span><span class="s4">{</span><span class="s1">self.image_dir</span><span class="s4">}</span><span class="s3">/</span><span class="s4">{</span><span class="s1">image_id</span><span class="s4">}</span><span class="s3">.jpg'</span><span class="s1">, cv2.IMREAD_COLOR)</span>
+            <span class="s1">image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)</span>
+            <span class="s1">image /= </span><span class="s5">255.0</span>
+
+            <span class="s0">if </span><span class="s1">self.transforms:</span>
+                <span class="s1">sample = {</span>
+                    <span class="s3">'image'</span><span class="s1">: image,</span>
+                <span class="s1">}</span>
+                <span class="s1">sample = self.transforms(**sample)</span>
+                <span class="s1">image = sample[</span><span class="s3">'image'</span><span class="s1">]</span>
+
+            <span class="s0">return </span><span class="s1">image, image_id</span>
+
+        <span class="s0">def </span><span class="s1">__len__(self) -&gt; int:</span>
+            <span class="s0">return </span><span class="s1">self.image_ids.shape[</span><span class="s5">0</span><span class="s1">]</span>
+
+    <span class="s2"># ----------------------------------------------------------------------------------------</span>
+
+    <span class="s2"># Albumentations</span>
+    <span class="s0">def </span><span class="s1">get_test_transform():</span>
+        <span class="s0">return </span><span class="s1">A.Compose([</span>
+            <span class="s2"># A.Resize(512, 512),</span>
+            <span class="s1">ToTensorV2(p=</span><span class="s5">1.0</span><span class="s1">)</span>
+        <span class="s1">])</span>
+
+    <span class="s2"># ----------------------------------------------------------------------------------------</span>
+
+    <span class="s2"># load a model; pre-trained on COCO</span>
+    <span class="s1">model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=</span><span class="s0">False</span><span class="s1">, pretrained_backbone=</span><span class="s0">False</span><span class="s1">)</span>
+
+    <span class="s2"># -----------------------------------------------------------------------------------------</span>
+
+    <span class="s1">device = torch.device(</span><span class="s3">'cuda'</span><span class="s1">) </span><span class="s0">if </span><span class="s1">torch.cuda.is_available() </span><span class="s0">else </span><span class="s1">torch.device(</span><span class="s3">'cpu'</span><span class="s1">)</span>
+
+    <span class="s1">num_classes = </span><span class="s5">2  </span><span class="s2"># 1 class (wheat) + background</span>
+
+    <span class="s2"># get number of input features for the classifier</span>
+    <span class="s1">in_features = model.roi_heads.box_predictor.cls_score.in_features</span>
+
+    <span class="s2"># replace the pre-trained head with a new one</span>
+    <span class="s1">model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes)</span>
+
+    <span class="s2"># Load the trained weights</span>
+    <span class="s1">model.load_state_dict(torch.load(WEIGHTS_FILE, map_location=torch.device(</span><span class="s3">'cpu'</span><span class="s1">)))</span>
+    <span class="s1">model.eval()</span>
+
+    <span class="s1">x = model.to(device)</span>
+
+
+    <span class="s2"># -----------------------------------------------------------------------------------------</span>
+
+    <span class="s0">def </span><span class="s1">collate_fn(batch):</span>
+        <span class="s0">return </span><span class="s1">tuple(zip(*batch))</span>
+
+    <span class="s1">test_dataset = WheatTestDataset(test_df, DIR_TEST, get_test_transform())</span>
+
+    <span class="s1">test_data_loader = DataLoader(</span>
+        <span class="s1">test_dataset,</span>
+        <span class="s1">batch_size=</span><span class="s5">4</span><span class="s1">,</span>
+        <span class="s1">shuffle=</span><span class="s0">False</span><span class="s1">,</span>
+        <span class="s1">num_workers=</span><span class="s5">0</span><span class="s1">,</span>
+        <span class="s1">drop_last=</span><span class="s0">False</span><span class="s1">,</span>
+        <span class="s1">collate_fn=collate_fn</span>
+    <span class="s1">)</span>
+
+    <span class="s2"># ---------------------------------------------------------------------------------------</span>
+
+    <span class="s0">def </span><span class="s1">format_prediction_string(boxes, scores):</span>
+        <span class="s1">pred_strings = []</span>
+        <span class="s0">for </span><span class="s1">j </span><span class="s0">in </span><span class="s1">zip(scores, boxes):</span>
+            <span class="s1">pred_strings.append(</span><span class="s3">&quot;{0:.4f} {1} {2} {3} {4}&quot;</span><span class="s1">.format(j[</span><span class="s5">0</span><span class="s1">], j[</span><span class="s5">1</span><span class="s1">][</span><span class="s5">0</span><span class="s1">], j[</span><span class="s5">1</span><span class="s1">][</span><span class="s5">1</span><span class="s1">], j[</span><span class="s5">1</span><span class="s1">][</span><span class="s5">2</span><span class="s1">], j[</span><span class="s5">1</span><span class="s1">][</span><span class="s5">3</span><span class="s1">]))</span>
+
+        <span class="s0">return </span><span class="s3">&quot; &quot;</span><span class="s1">.join(pred_strings)</span>
+
+    <span class="s2"># ------------------------------------------------------------------------------------</span>
+
+    <span class="s1">detection_threshold = </span><span class="s5">0.5</span>
+    <span class="s1">results = []</span>
+
+    <span class="s0">for </span><span class="s1">images, image_ids </span><span class="s0">in </span><span class="s1">test_data_loader:</span>
+
+        <span class="s1">images = list(image.to(device) </span><span class="s0">for </span><span class="s1">image </span><span class="s0">in </span><span class="s1">images)</span>
+        <span class="s1">outputs = model(images)</span>
+
+        <span class="s0">for </span><span class="s1">i, image </span><span class="s0">in </span><span class="s1">enumerate(images):</span>
+
+            <span class="s1">boxes = outputs[i][</span><span class="s3">'boxes'</span><span class="s1">].data.cpu().numpy()</span>
+            <span class="s1">scores = outputs[i][</span><span class="s3">'scores'</span><span class="s1">].data.cpu().numpy()</span>
+
+            <span class="s1">boxes = boxes[scores &gt;= detection_threshold].astype(np.int32)</span>
+            <span class="s1">scores = scores[scores &gt;= detection_threshold]</span>
+            <span class="s1">image_id = image_ids[i]</span>
+
+            <span class="s1">boxes[:, </span><span class="s5">2</span><span class="s1">] = boxes[:, </span><span class="s5">2</span><span class="s1">] - boxes[:, </span><span class="s5">0</span><span class="s1">]</span>
+            <span class="s1">boxes[:, </span><span class="s5">3</span><span class="s1">] = boxes[:, </span><span class="s5">3</span><span class="s1">] - boxes[:, </span><span class="s5">1</span><span class="s1">]</span>
+
+            <span class="s2"># --------------------------------------------------------------------------------</span>
+
+            <span class="s1">sample = images[</span><span class="s5">0</span><span class="s1">].permute(</span><span class="s5">1</span><span class="s1">, </span><span class="s5">2</span><span class="s1">, </span><span class="s5">0</span><span class="s1">).cpu().numpy()</span>
+            <span class="s1">boxes = outputs[</span><span class="s5">0</span><span class="s1">][</span><span class="s3">'boxes'</span><span class="s1">].data.cpu().numpy()</span>
+            <span class="s1">scores = outputs[</span><span class="s5">0</span><span class="s1">][</span><span class="s3">'scores'</span><span class="s1">].data.cpu().numpy()</span>
+
+            <span class="s1">boxes = boxes[scores &gt;= detection_threshold].astype(np.int32)</span>
+
+            <span class="s2"># ---------------------------------------------------------------------------------</span>
+
+            <span class="s1">fig, ax = plt.subplots(</span><span class="s5">1</span><span class="s1">, </span><span class="s5">1</span><span class="s1">, figsize=(</span><span class="s5">16</span><span class="s1">, </span><span class="s5">8</span><span class="s1">))</span>
+            <span class="s1">ittr = </span><span class="s5">0</span>
+            <span class="s0">for </span><span class="s1">box </span><span class="s0">in </span><span class="s1">boxes:</span>
+                <span class="s1">ittr += </span><span class="s5">1</span>
+                <span class="s1">cv2.rectangle(sample,</span>
+                              <span class="s1">(box[</span><span class="s5">0</span><span class="s1">], box[</span><span class="s5">1</span><span class="s1">]),</span>
+                              <span class="s1">(box[</span><span class="s5">2</span><span class="s1">], box[</span><span class="s5">3</span><span class="s1">]),</span>
+                              <span class="s1">(</span><span class="s5">220</span><span class="s1">, </span><span class="s5">0</span><span class="s1">, </span><span class="s5">0</span><span class="s1">), </span><span class="s5">2</span><span class="s1">)</span>
+
+            <span class="s1">ax.set_axis_off()</span>
+            <span class="s1">ax.imshow(sample)</span>
+
+
+            <span class="s2">#-------------------------------------------------------------------------------</span>
+
+            <span class="s1">result = {</span>
+                <span class="s3">'image_id'</span><span class="s1">: image_id,</span>
+                <span class="s3">'PredictionString'</span><span class="s1">: format_prediction_string(boxes, scores),</span>
+                <span class="s3">'Spikes_Count'</span><span class="s1">: ittr</span>
+            <span class="s1">}</span>
+
+            <span class="s1">results.append(result)</span>
+
+    <span class="s2"># ---------------------------------------------------------------------------------------------</span>
+
+    <span class="s1">test_df = pd.DataFrame(results, columns=[</span><span class="s3">'image_id'</span><span class="s1">, </span><span class="s3">'PredictionString'</span><span class="s1">, </span><span class="s3">'Spikes_Count'</span><span class="s1">])</span>
+    <span class="s1">print(test_df)</span>
+
+    <span class="s2"># --------------------------------------------------------------------------------------------</span>
+
+    <span class="s1">test_df.to_csv(</span><span class="s3">'D:/Project/Spikes Counter/outputCSV/Predicted_data.csv'</span><span class="s1">, index=</span><span class="s0">False</span><span class="s1">)</span>
+
+    <span class="s2"># --------------------------------------------------------------------------------------------</span>
+
+
+<span class="s1">app = Flask(__name__)</span>
+
+
+<span class="s1">@app.route(</span><span class="s3">'/'</span><span class="s1">, methods=[</span><span class="s3">'POST'</span><span class="s1">, </span><span class="s3">'GET'</span><span class="s1">])</span>
+<span class="s0">def </span><span class="s1">index():</span>
+    <span class="s1">headers = [</span><span class="s3">'image_id'</span><span class="s1">, </span><span class="s3">'PredictionString'</span><span class="s1">]</span>
+    <span class="s1">randomString = </span><span class="s3">&quot;1.0 0 0 50 50&quot;</span>
+    <span class="s1">UPLOAD_FOLDER = </span><span class="s3">'./static/data'</span>
+    <span class="s1">imageNames = []</span>
+    <span class="s0">if </span><span class="s1">request.method == </span><span class="s3">'POST'</span><span class="s1">:</span>
+
+        <span class="s2"># Delete all previous images from data folder</span>
+        <span class="s1">dir = </span><span class="s3">'D:/Project/Spikes Counter/static/data'</span>
+        <span class="s0">for </span><span class="s1">f </span><span class="s0">in </span><span class="s1">os.listdir(dir):</span>
+            <span class="s1">os.remove(os.path.join(dir, f))</span>
+
+        <span class="s2"># Saving new images into data folder</span>
+        <span class="s1">app.config[</span><span class="s3">'UPLOAD_FOLDER'</span><span class="s1">] = UPLOAD_FOLDER</span>
+        <span class="s1">files = request.files.getlist(</span><span class="s3">&quot;file&quot;</span><span class="s1">)</span>
+        <span class="s0">for </span><span class="s1">file </span><span class="s0">in </span><span class="s1">files:</span>
+            <span class="s1">imageNames.append(file.filename.split(</span><span class="s3">&quot;.&quot;</span><span class="s1">)[</span><span class="s5">0</span><span class="s1">])</span>
+            <span class="s1">path = os.path.join(app.config[</span><span class="s3">'UPLOAD_FOLDER'</span><span class="s1">], file.filename)</span>
+            <span class="s1">file.save(path)</span>
+
+        <span class="s2"># Making csv file</span>
+        <span class="s1">f = open(</span><span class="s3">'D:/Project/Spikes Counter/assets/sample_submission.csv'</span><span class="s1">, </span><span class="s3">'w'</span><span class="s1">, newline=</span><span class="s3">''</span><span class="s1">)</span>
+        <span class="s1">writer = csv.writer(f)</span>
+        <span class="s1">writer.writerow(headers)</span>
+        <span class="s0">for </span><span class="s1">name </span><span class="s0">in </span><span class="s1">imageNames:</span>
+            <span class="s1">row = [name, randomString]</span>
+            <span class="s1">writer.writerow(row)</span>
+        <span class="s1">f.close()</span>
+
+        <span class="s2"># Model code</span>
+        <span class="s1">runModel()</span>
+
+        <span class="s1">f2 = open(</span><span class="s3">'D:/Project/Spikes Counter/outputCSV/Predicted_data.csv'</span><span class="s1">, </span><span class="s3">'r'</span><span class="s1">, newline=</span><span class="s3">''</span><span class="s1">)</span>
+        <span class="s1">reader = csv.reader(f2)</span>
+        <span class="s1">i = </span><span class="s5">1</span>
+        <span class="s1">spikesCount = </span><span class="s5">0</span>
+        <span class="s0">for </span><span class="s1">row </span><span class="s0">in </span><span class="s1">reader:</span>
+            <span class="s0">if </span><span class="s1">i != </span><span class="s5">1</span><span class="s1">:</span>
+                <span class="s1">spikesCount += int(row[</span><span class="s5">2</span><span class="s1">])</span>
+            <span class="s1">i += </span><span class="s5">1</span>
+
+        <span class="s1">yieldValue = (</span><span class="s5">23 </span><span class="s1">* spikesCount) * </span><span class="s5">0.0319</span>
+        <span class="s1">normalizedyield = round(yieldValue,</span><span class="s5">3</span><span class="s1">)</span>
+
+        <span class="s0">return </span><span class="s1">render_template(</span><span class="s3">'results.html'</span><span class="s1">, spikes=spikesCount, yieldVal=normalizedyield)</span>
+
+    <span class="s0">else</span><span class="s1">:</span>
+        <span class="s0">return </span><span class="s1">render_template(</span><span class="s3">'index.html'</span><span class="s1">)</span>
+
+
+<span class="s1">@app.route(</span><span class="s3">'/result'</span><span class="s1">, methods=[</span><span class="s3">'POST'</span><span class="s1">, </span><span class="s3">'GET'</span><span class="s1">])</span>
+<span class="s0">def </span><span class="s1">result():</span>
+    <span class="s0">if </span><span class="s1">request.method == </span><span class="s3">'POST'</span><span class="s1">:</span>
+       <span class="s0">return </span><span class="s1">render_template(</span><span class="s3">'index.html'</span><span class="s1">)</span>
+
+
+
+
+<span class="s0">if </span><span class="s1">__name__ == </span><span class="s3">&quot;__main__&quot;</span><span class="s1">:</span>
+    <span class="s1">app.run(debug=</span><span class="s0">True</span><span class="s1">)</span>
+
+
+<span class="s2"># pip install flask</span>
+<span class="s2"># pip install pandas</span>
+<span class="s2"># pip install opencv-python</span>
+<span class="s2"># pip install Pillow</span>
+<span class="s2"># pip install -U albumentations</span>
+<span class="s2"># pip3 install torchvision</span>
+<span class="s2"># pip install matplotlib</span>
+</pre>
+</body>
+</html>
